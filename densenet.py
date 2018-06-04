@@ -28,6 +28,8 @@ X = []
 lbl = []
 for mod in mods:
     for snr in snrs:
+       if snr >= 6:
+
         X.append(Xd[(mod, snr)])
         for i in range(Xd[(mod, snr)].shape[0]):  lbl.append((mod, snr))
 X = np.vstack(X)
@@ -150,6 +152,68 @@ def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues, label
 test_Y_hat = model.predict(X_test, batch_size=batch_size)
 
 # %%调用库产生混淆矩阵
+#%%
+def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues, labels=[]):
+    plt.figure(figsize=(12,8))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(labels))
+    plt.xticks(tick_marks, labels, rotation=45,size = 'large')
+    plt.yticks(tick_marks, labels,size = 'large')
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig('Confusion matrix'+'snr='+str(snr))
+#%%
+filepath = "dense.h5"   # 所要保存的文件名字，h5格式，不用写路径，默认在程序执行的文件夹内
+model.load_weights(filepath)
+
+oaa = []
+for snr in snrs:
+    print('-----------------------')
+    print('now snr is:',snr)
+    # extract classes @ SNR
+    test_SNRs = list(map(lambda x: lbl[x][1], val_idx))
+#    print(test_SNRs)
+    test_X_i = X_val[np.where(np.array(test_SNRs)==snr)]
+    test_Y_i = Y_val[np.where(np.array(test_SNRs)==snr)]
+    test_Y_i = np.argmax(test_Y_i,axis=1)
+
+    # estimate classes
+    test_Y_i_hat = model.predict(test_X_i)
+    test_Y_i_hat = np.argmax(test_Y_i_hat,axis=1)
+    
+    cnf_matrix = confusion_matrix(test_Y_i, test_Y_i_hat)
+    plot_confusion_matrix(cnf_matrix, labels=classes, title='Confusion matrix' )
+
+    oa = 100*accuracy_score(test_Y_i_hat, test_Y_i)
+    oaa = np.append(oaa,oa)
+#    kappa_oa = {}
+    print('oa_all:', oa)
+    acc_for_each_class = metrics.precision_score(test_Y_i, test_Y_i_hat, average=None)
+    average_accuracy = 100*np.mean(acc_for_each_class)
+    print('aa:', average_accuracy)
+    kappa = cohen_kappa_score(test_Y_i_hat, test_Y_i)
+    print('kappa:', kappa)
+    
+#    conf = np.zeros([len(classes),len(classes)])
+#    confnorm = np.zeros([len(classes),len(classes)])
+#    for i in range(0,test_X_i.shape[0]):
+#        j = list(test_Y_i[i,:]).index(1)
+#        k = int(np.argmax(test_Y_i_hat[i,:]))
+#        conf[j,k] = conf[j,k] + 1
+#    for i in range(0,len(classes)):
+#        confnorm[i,:] = conf[i,:] / np.sum(conf[i,:])
+#    plt.figure()
+#    plot_confusion_matrix(confnorm, labels=classes, title="ConvNet Confusion Matrix (SNR=%d)"%(snr))
+#    
+#    cor = np.sum(np.diag(conf))
+#    ncor = np.sum(conf) - cor
+#    print ("Overall Accuracy: ", cor / (cor+ncor))
+#    acc[snr] = 1.0*cor/(cor+ncor)
+#%%
+#test_Y_hat = model.predict(X_val, batch_size=batch_size)
 pre_labels = []
 for x in test_Y_hat:
     tmp = np.argmax(x, 0)
@@ -167,22 +231,22 @@ print('kappa_all:', kappa)
 kappa_oa['oa_all'] = oa
 kappa_oa['kappa_all'] = kappa
 fd = open('results_all_%s_d0.5.dat' % (name), 'wb')
-cPickle.dump(("%s" % (name), 0.5, kappa_oa), fd)
+pickle.dump(("%s" % (name), 0.5, kappa_oa), fd)
 fd.close()
 cnf_matrix = confusion_matrix(true_labels, pre_labels)
 # np.set_printoptions(precision=2)
 # Plot non-normalized confusion matrix
 # plt.figure()
-plotcm.plot_confusion_matrix(cnf_matrix, classes=classes,
-                             normalize=False,
-                             title='%s Confusion matrix, without normalization' % (name), showtext=True)
-plt.savefig('%s Confusion matrix, without normalization' % (name))
-# Plot normalized confusion matrix
-# plt.figure()
-plotcm.plot_confusion_matrix(cnf_matrix, classes=classes,
-                             normalize=True,
-                             title='%s Normalized confusion matrix' % (name), showtext=True)
-plt.savefig('%s Normalized confusion matrix' % (name))
+#plotcm.plot_confusion_matrix(cnf_matrix, classes=classes,
+#                             normalize=False,
+#                             title='%s Confusion matrix, without normalization' % (name), showtext=True)
+#plt.savefig('%s Confusion matrix, without normalization' % (name))
+## Plot normalized confusion matrix
+## plt.figure()
+#plotcm.plot_confusion_matrix(cnf_matrix, classes=classes,
+#                             normalize=True,
+#                             title='%s Normalized confusion matrix' % (name), showtext=True)
+#plt.savefig('%s Normalized confusion matrix' % (name))
 # plt.show()
 
 # %%自定义产生混淆矩阵
